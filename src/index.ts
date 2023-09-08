@@ -1,23 +1,68 @@
 import { Client } from "@notionhq/client";
+import { PageObjectResponse, PartialPageObjectResponse, QueryDatabaseParameters } from "@notionhq/client/build/src/api-endpoints";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-async function main() {
-  const notion = new Client({
-    auth: process.env.NOTION_TOKEN,
-  });
+const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
-  const response = await notion.databases.query({
-    database_id: "FIXME",
-  });
+const database_id = process.env.NOTION_DATABASE_ID;
 
-  console.log("Got response:", response);
+async function tryUpdateDailyJournalIcon() {
+  console.log("Looking for changes in Notion database ")
+  //Get the tasks currently in the database
+  const currTasksInDatabase = await getTasksFromDatabase()
+  console.log(currTasksInDatabase)
+
+  //Iterate over the current tasks and compare them to tasks in our local store (tasksInDatabase)
+  for (const page of currTasksInDatabase) {
+    if ((page as PageObjectResponse).icon === null) {
+      const d = (page as PageObjectResponse).created_time.split("T")[0]
+      await notion.pages.update({
+        page_id: page.id,
+        icon: {
+          external: { url: `https://linmi.cc/calendar/index.php?date=${d}` },
+          type: "external",
+        }
+      })
+    }
+  }
+  //Run this method every 5 seconds (5000 milliseconds)
+  setTimeout(main, 5000)
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+//Get a paginated list of Tasks currently in a the database. 
+async function getTasksFromDatabase() {
+
+  let tasks: Array<PageObjectResponse | PartialPageObjectResponse> = []
+
+  async function getPageOfTasks(cursor: string | null) {
+    let req: QueryDatabaseParameters = {
+      database_id: database_id!,
+    }
+    if (cursor !== null) {
+      req.start_cursor = cursor!
+    }
+
+    let current_pages = await notion.databases.query(req)
+
+    for (const page of current_pages.results) {
+      tasks = tasks.concat(page)
+    }
+    if (current_pages.has_more) {
+      await getPageOfTasks(current_pages.next_cursor)
+    }
+  }
+
+  await getPageOfTasks(null);
+  return tasks;
+};
+
+function main() {
+  tryUpdateDailyJournalIcon().catch(console.error);
+}
+
+(async () => {
+  await getTasksFromDatabase();
+  main();
+})()
