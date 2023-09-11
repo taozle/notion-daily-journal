@@ -12,7 +12,7 @@ async function tryUpdateDailyJournalIcon() {
   console.log("Looking for changes in Notion database ")
   //Get the tasks currently in the database
   const currTasksInDatabase = await getTasksFromDatabase()
-  console.log(currTasksInDatabase)
+  // console.log(currTasksInDatabase)
 
   //Iterate over the current tasks and compare them to tasks in our local store (tasksInDatabase)
   for (const page of currTasksInDatabase) {
