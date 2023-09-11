@@ -15,9 +15,10 @@ async function tryUpdateDailyJournalIcon() {
   // console.log(currTasksInDatabase)
 
   //Iterate over the current tasks and compare them to tasks in our local store (tasksInDatabase)
-  for (const page of currTasksInDatabase) {
-    if ((page as PageObjectResponse).icon === null) {
-      const d = (page as PageObjectResponse).created_time.split("T")[0]
+  for (const p of currTasksInDatabase) {
+    const page = p as PageObjectResponse
+    if (page.icon === null) {
+      const d = page.created_time.split("T")[0]
       await notion.pages.update({
         page_id: page.id,
         icon: {
@@ -25,6 +26,7 @@ async function tryUpdateDailyJournalIcon() {
           type: "external",
         }
       })
+      console.log(`Page(${page.id}) icon is updated`)
     }
   }
   //Run this method every 5 seconds (5000 milliseconds)
